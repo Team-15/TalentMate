@@ -1,9 +1,17 @@
 const express = require('express');
 const pool = require('../db');
 const authMiddleware = require('../middleware/auth');
+const { logInteraction } = require('../services/interactions');
 
 const router = express.Router();
 router.use(authMiddleware);
+
+const CHECK_IN_CHANNELS = {
+  call: { title: '打了电话', label: '打电话了' },
+  wechat: { title: '发了微信', label: '发微信了' },
+  meet: { title: '见了面', label: '见面了' },
+  other: { title: '联系过了', label: '刚刚联系过' },
+};
 
 const COLORS = ['#1677FF', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#64748B'];
 
@@ -41,9 +49,9 @@ router.get('/', async (req, res) => {
     let sql = 'SELECT * FROM contacts WHERE user_id = ?';
     const params = [req.user.id];
     if (keyword) {
-      sql += ' AND (name LIKE ? OR email LIKE ? OR department LIKE ? OR role LIKE ?)';
+      sql += ' AND (name LIKE ? OR email LIKE ? OR phone LIKE ? OR department LIKE ? OR role LIKE ?)';
       const q = `%${keyword}%`;
-      params.push(q, q, q, q);
+      params.push(q, q, q, q, q);
     }
     if (type && type !== 'all') {
       sql += ' AND contact_type = ?';
@@ -55,6 +63,76 @@ router.get('/', async (req, res) => {
   } catch (err) {
     console.error('Get contacts error:', err);
     res.status(500).json({ success: false, message: '获取名册失败' });
+  }
+});
+
+/**
+ * Append a relationship memory (does NOT reset heatmap days).
+ * POST /api/contacts/:id/memories  { text: string }
+ */
+router.post('/:id/memories', async (req, res) => {
+  try {
+    const contactId = req.params.id;
+    const text = clean(req.body?.text || req.body?.note);
+    if (!text) {
+      return res.status(400).json({ success: false, message: '请填写记忆内容' });
+    }
+    const [contactRows] = await pool.query(
+      'SELECT id, name FROM contacts WHERE id = ? AND user_id = ?',
+      [contactId, req.user.id]
+    );
+    if (contactRows.length === 0) {
+      return res.status(404).json({ success: false, message: '联系人不存在' });
+    }
+    await logInteraction(pool, {
+      userId: req.user.id,
+      contactId: Number(contactId),
+      eventId: null,
+      actionType: 'memory',
+      title: `关于 ${contactRows[0].name} 的记忆`,
+      detail: text,
+    });
+    res.status(201).json({ success: true, message: '记忆已保存' });
+  } catch (err) {
+    console.error('Memory error:', err);
+    res.status(500).json({ success: false, message: '保存记忆失败' });
+  }
+});
+
+/**
+ * One-tap check-in: record a real contact moment for heatmap.
+ * POST /api/contacts/:id/check-in  { channel?: call|wechat|meet|other, note?: string }
+ */
+router.post('/:id/check-in', async (req, res) => {
+  try {
+    const contactId = req.params.id;
+    const [contactRows] = await pool.query(
+      'SELECT id, name FROM contacts WHERE id = ? AND user_id = ?',
+      [contactId, req.user.id]
+    );
+    if (contactRows.length === 0) {
+      return res.status(404).json({ success: false, message: '联系人不存在' });
+    }
+    const channel = String(req.body?.channel || 'other').toLowerCase();
+    const meta = CHECK_IN_CHANNELS[channel] || CHECK_IN_CHANNELS.other;
+    const note = clean(req.body?.note) || null;
+    const title = `${meta.title} · ${contactRows[0].name}`;
+    await logInteraction(pool, {
+      userId: req.user.id,
+      contactId: Number(contactId),
+      eventId: null,
+      actionType: 'reached_out',
+      title,
+      detail: note,
+    });
+    res.status(201).json({
+      success: true,
+      message: `已记录：${meta.label}`,
+      data: { action_type: 'reached_out', channel: CHECK_IN_CHANNELS[channel] ? channel : 'other', title },
+    });
+  } catch (err) {
+    console.error('Check-in error:', err);
+    res.status(500).json({ success: false, message: '记录联系失败' });
   }
 });
 
@@ -153,12 +231,13 @@ router.post('/', async (req, res) => {
     }
     const [result] = await pool.query(
       `INSERT INTO contacts
-       (user_id, name, email, contact_type, department, role, birthday, onboard_date, avatar_color, care_level, care_warn_days, care_danger_days, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (user_id, name, email, phone, contact_type, department, role, birthday, onboard_date, avatar_color, care_level, care_warn_days, care_danger_days, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         payload.user_id,
         payload.name,
         payload.email,
+        payload.phone,
         payload.contact_type,
         payload.department,
         payload.role,
@@ -204,12 +283,13 @@ router.post('/import-csv', async (req, res) => {
       }
       await pool.query(
         `INSERT INTO contacts
-         (user_id, name, email, contact_type, department, role, birthday, onboard_date, avatar_color, care_level, care_warn_days, care_danger_days, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (user_id, name, email, phone, contact_type, department, role, birthday, onboard_date, avatar_color, care_level, care_warn_days, care_danger_days, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           payload.user_id,
           payload.name,
           payload.email,
+          payload.phone,
           payload.contact_type,
           payload.department,
           payload.role,
@@ -257,13 +337,14 @@ router.put('/:id', async (req, res) => {
     }
     const [result] = await pool.query(
       `UPDATE contacts
-       SET name = ?, email = ?, contact_type = ?, department = ?, role = ?,
+       SET name = ?, email = ?, phone = ?, contact_type = ?, department = ?, role = ?,
            birthday = ?, onboard_date = ?, avatar_color = ?, care_level = ?,
            care_warn_days = ?, care_danger_days = ?, notes = ?
        WHERE id = ? AND user_id = ?`,
       [
         payload.name,
         payload.email,
+        payload.phone,
         payload.contact_type,
         payload.department,
         payload.role,
@@ -305,17 +386,27 @@ router.delete('/:id', async (req, res) => {
 
 function normalizeContact(body, userId) {
   const name = body.name || body['姓名'];
-  const type = body.contactType || body.contact_type || body.type || body['类型'];
+  const type = body.contactType || body.contact_type || body.type || body['类型'] || body['关系圈'];
   const contactType = normalizeContactType(clean(type));
   return {
     user_id: userId,
     name: clean(name),
     email: clean(body.email || body['邮箱']) || null,
-    contact_type: contactType || 'employee',
-    department: clean(body.department || body['部门']) || null,
-    role: clean(body.role || body.position || body['岗位'] || body['职位']) || null,
+    phone: clean(body.phone || body.mobile || body['电话'] || body['手机']) || null,
+    contact_type: contactType || 'friend',
+    // department 语义：关系圈/怎么认识；兼容旧 CSV「部门」列
+    department: clean(
+      body.department || body.circle || body['关系圈'] || body['怎么认识'] || body['部门']
+    ) || null,
+    // role 语义：称呼/备注角色；兼容旧 CSV「岗位/职位」列
+    role: clean(
+      body.role || body.position || body['称呼'] || body['备注角色'] || body['岗位'] || body['职位']
+    ) || null,
     birthday: clean(body.birthday || body['生日']) || null,
-    onboard_date: clean(body.onboardDate || body.onboard_date || body['入职时间']) || null,
+    // onboard_date 语义：相识日/纪念日；兼容旧「入职时间」
+    onboard_date: clean(
+      body.onboardDate || body.onboard_date || body.metDate || body['相识日'] || body['纪念日'] || body['入职时间']
+    ) || null,
     avatar_color: clean(body.avatarColor || body.avatar_color) || COLORS[Math.floor(Math.random() * COLORS.length)],
     care_level: normalizeCareLevel(body.careLevel || body.care_level || body['关注等级']),
     care_warn_days: normalizeDays(body.careWarnDays ?? body.care_warn_days ?? body['需关注天数']),
@@ -324,21 +415,30 @@ function normalizeContact(body, userId) {
   };
 }
 
+/**
+ * 关系圈：family / friend / acquaintance。
+ * 兼容旧职场枚举：employee→friend，candidate→acquaintance。
+ */
 function normalizeContactType(value) {
   if (!value) return '';
-  if (value === '员工') return 'employee';
-  if (value === '候选人') return 'candidate';
-  return value;
+  const v = String(value).trim().toLowerCase();
+  if (['家人', 'family'].includes(v) || value === '家人') return 'family';
+  if (['朋友', 'friend'].includes(v) || value === '朋友') return 'friend';
+  if (['熟人', 'acquaintance'].includes(v) || value === '熟人') return 'acquaintance';
+  // legacy workplace types
+  if (['员工', 'employee'].includes(v) || value === '员工') return 'friend';
+  if (['候选人', 'candidate'].includes(v) || value === '候选人') return 'acquaintance';
+  return v;
 }
 
 function validateContact(payload) {
   if (!payload.name) return { valid: false, message: '姓名为必填项' };
-  if (!payload.email) return { valid: false, message: '邮箱为必填项' };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+  // Email is optional for personal contacts; validate format only when present
+  if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
     return { valid: false, message: '邮箱格式不正确' };
   }
-  if (!['employee', 'candidate'].includes(payload.contact_type)) {
-    return { valid: false, message: '类型必须是员工或候选人' };
+  if (!['family', 'friend', 'acquaintance'].includes(payload.contact_type)) {
+    return { valid: false, message: '类型必须是家人、朋友或熟人' };
   }
   if (!CARE_LEVELS.includes(payload.care_level)) {
     return { valid: false, message: '关注等级必须是「重点 / 普通 / 低」之一' };

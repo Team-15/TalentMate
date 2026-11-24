@@ -4,6 +4,7 @@ import { PlusOutlined, UploadOutlined, EditOutlined, DeleteOutlined, SearchOutli
 import dayjs from 'dayjs';
 import api from '../../services/api';
 import { CARE_LEVEL_OPTIONS, careLevelLabel, careLevelStyle } from './heatmap';
+import { CONTACT_TYPE_OPTIONS, contactTypeLabel } from './eventTypes';
 
 const STATUS_META = {
   scheduled: { label: '已安排', className: 'bg-blue-50 text-blue-700 border-blue-100' },
@@ -38,16 +39,16 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
   }, [contacts, keyword, typeFilter]);
 
   const stats = React.useMemo(() => {
-    const candidateCount = contacts.filter((item) => item.contact_type === 'candidate').length;
+    const familyCount = contacts.filter((item) => item.contact_type === 'family').length;
     const riskyCount = heatmap.filter((item) => item.status === 'warning' || item.status === 'danger').length;
     const scheduledCount = heatmap.filter((item) => item.status === 'scheduled').length;
-    return { candidateCount, riskyCount, scheduledCount };
+    return { familyCount, riskyCount, scheduledCount };
   }, [contacts, heatmap]);
 
   const openAdd = () => {
     setEditing(null);
     form.resetFields();
-    form.setFieldsValue({ contactType: 'employee', avatarColor: '#1677FF', careLevel: 'normal' });
+    form.setFieldsValue({ contactType: 'friend', avatarColor: '#1677FF', careLevel: 'normal' });
     setModalOpen(true);
   };
 
@@ -56,6 +57,7 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
     form.setFieldsValue({
       name: contact.name,
       email: contact.email,
+      phone: contact.phone,
       contactType: contact.contact_type,
       department: contact.department,
       role: contact.role,
@@ -114,8 +116,8 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
     <div className="h-full flex flex-col">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
         <div>
-          <h2 className="text-base font-semibold text-slate-800">人才名册</h2>
-          <p className="text-xs text-slate-400 mt-0.5">维护员工与候选人，持续追踪每段关系的温度</p>
+          <h2 className="text-base font-semibold text-slate-800">关系名册</h2>
+          <p className="text-xs text-slate-400 mt-0.5">维护家人、朋友与熟人，持续追踪每段关系的温度</p>
         </div>
         <div className="flex items-center gap-2">
           <Button size="small" icon={<UploadOutlined />} onClick={() => setCsvOpen(true)}>导入</Button>
@@ -134,7 +136,7 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
             prefix={<SearchOutlined className="text-slate-300" />}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="搜索姓名、邮箱、部门或岗位"
+            placeholder="搜索姓名、电话、邮箱、关系圈或称呼"
           />
           <Select
             value={typeFilter}
@@ -142,8 +144,7 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
             className="md:!w-36"
             options={[
               { value: 'all', label: '全部类型' },
-              { value: 'employee', label: '员工' },
-              { value: 'candidate', label: '候选人' },
+              ...CONTACT_TYPE_OPTIONS,
             ]}
           />
         </div>
@@ -176,7 +177,7 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
                     <span className="min-w-0">
                       <span className="block font-semibold text-slate-800 truncate">{contact.name}</span>
                       <span className="block text-xs text-slate-500 mt-1 truncate">
-                        {contact.department || contact.role || '未填写部门/岗位'}
+                        {contact.department || contact.role || '未填写关系圈/称呼'}
                       </span>
                       <span className="block text-xs text-slate-400 mt-1 truncate">{contact.email || '未填写邮箱'}</span>
                     </span>
@@ -188,8 +189,17 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1 min-w-0">
-                    <Tag color={contact.contact_type === 'candidate' ? 'orange' : 'blue'} className="!m-0">
-                      {contact.contact_type === 'candidate' ? '候选人' : '员工'}
+                    <Tag
+                      color={
+                        contact.contact_type === 'family'
+                          ? 'magenta'
+                          : contact.contact_type === 'acquaintance'
+                            ? 'default'
+                            : 'blue'
+                      }
+                      className="!m-0"
+                    >
+                      {contactTypeLabel(contact.contact_type)}
                     </Tag>
                     {contact.care_level === 'high' && (
                       <span className={`px-2 py-0.5 rounded-full border text-[11px] ${careLevelStyle('high')}`}>
@@ -214,18 +224,21 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
           <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}><Input /></Form.Item>
           <Form.Item
             name="email"
-            label="邮箱"
-            rules={[{ required: true, message: '请输入邮箱' }, { type: 'email', message: '邮箱格式不正确' }]}
+            label="邮箱（可选）"
+            rules={[{ type: 'email', message: '邮箱格式不正确' }]}
           >
-            <Input placeholder="用于发送关怀邮件" />
+            <Input placeholder="有邮箱才可发送问候邮件" />
           </Form.Item>
-          <Form.Item name="contactType" label="类型" rules={[{ required: true, message: '请选择类型' }]}>
-            <Select options={[{ value: 'employee', label: '员工' }, { value: 'candidate', label: '候选人' }]} />
+          <Form.Item name="phone" label="电话（可选）">
+            <Input placeholder="用于一键拨号" />
+          </Form.Item>
+          <Form.Item name="contactType" label="关系圈" rules={[{ required: true, message: '请选择关系圈' }]}>
+            <Select options={CONTACT_TYPE_OPTIONS} />
           </Form.Item>
           <Form.Item
             name="careLevel"
             label="关注等级"
-            extra="重点联系人阈值更低：同样天数会比普通员工更早进入「需关注」"
+            extra="重点联系人阈值更低：同样天数会比普通联系人更早进入「需关注」"
           >
             <Select options={CARE_LEVEL_OPTIONS} />
           </Form.Item>
@@ -237,18 +250,18 @@ function DirectoryPanel({ contacts = [], heatmap = [], onRefresh, onSelect }) {
               <InputNumber min={1} max={365} className="!w-full" placeholder="如 35" />
             </Form.Item>
           </div>
-          <Form.Item name="department" label="部门"><Input /></Form.Item>
-          <Form.Item name="role" label="岗位 / 职位"><Input /></Form.Item>
+          <Form.Item name="department" label="怎么认识"><Input placeholder="如：大学同学、邻居" /></Form.Item>
+          <Form.Item name="role" label="称呼"><Input placeholder="如：妈妈、高中同学" /></Form.Item>
           <Form.Item name="birthday" label="生日"><DatePicker className="!w-full" /></Form.Item>
-          <Form.Item name="onboardDate" label="入职时间"><DatePicker className="!w-full" /></Form.Item>
+          <Form.Item name="onboardDate" label="相识日 / 纪念日"><DatePicker className="!w-full" /></Form.Item>
           <Form.Item name="avatarColor" label="头像颜色"><Input type="color" /></Form.Item>
           <Form.Item name="notes" label="备注"><Input.TextArea rows={3} /></Form.Item>
         </Form>
       </Modal>
 
       <Modal title="导入 CSV" open={csvOpen} onOk={importCsv} onCancel={() => setCsvOpen(false)} okText="导入" cancelText="取消">
-        <p className="text-xs text-slate-500 mb-2">必填表头：姓名,邮箱,类型。可选：部门,岗位,生日,入职时间,备注</p>
-        <Input.TextArea rows={8} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder="姓名,邮箱,类型,部门,岗位&#10;小张,zhang@example.com,employee,研发部,前端工程师" />
+        <p className="text-xs text-slate-500 mb-2">必填表头：姓名,类型。可选：电话,邮箱,关系圈,称呼,生日,相识日,备注</p>
+        <Input.TextArea rows={8} value={csv} onChange={(e) => setCsv(e.target.value)} placeholder="姓名,电话,邮箱,类型,关系圈,称呼&#10;妈妈,13800000000,,family,家人,妈妈&#10;小王,,wang@example.com,friend,大学同学,好友" />
       </Modal>
     </div>
   );

@@ -430,7 +430,7 @@ function MobileCalendarPage() {
             onValuesChange={() => { dirtyRef.current = true; }}
           >
             <Form.Item name="title" label="事项标题" rules={[{ required: true, message: '请输入标题' }]}>
-              <Input placeholder="例如：和张伟1对1" size="large" />
+              <Input placeholder="例如：给妈妈打电话" size="large" />
             </Form.Item>
 
             <div className="grid grid-cols-2 gap-3">
@@ -456,7 +456,7 @@ function MobileCalendarPage() {
                 allowClear
                 showSearch
                 size="large"
-                placeholder="选择名册中的员工或候选人"
+                placeholder="选择名册中的家人、朋友或熟人"
                 optionFilterProp="label"
                 options={contacts.map((c) => ({
                   value: c.id,

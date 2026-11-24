@@ -6,30 +6,9 @@ import 'dayjs/locale/zh-cn';
 import api from '../../services/api';
 import HeatmapStrip from './HeatmapStrip';
 import MailPreviewModal from './MailPreviewModal';
+import { EVENT_TYPE_OPTIONS, EVENT_TYPE_META, DOT_COLORS } from './eventTypes';
 
 dayjs.locale('zh-cn');
-
-const DOT_COLORS = ['#1677FF', '#F59E0B', '#10B981', '#8B5CF6', '#EF4444', '#EC4899'];
-
-const EVENT_TYPE_OPTIONS = [
-  { value: 'general', label: '普通日程' },
-  { value: 'one_on_one', label: '1对1沟通' },
-  { value: 'interview', label: '面试跟进' },
-  { value: 'birthday', label: '生日关怀' },
-  { value: 'onboarding', label: '入职/周年' },
-  { value: 'offer', label: '录用确认' },
-  { value: 'followup', label: '候选人跟进' },
-];
-
-const EVENT_TYPE_META = {
-  general: { label: '普通日程', color: '#64748B', bg: 'bg-slate-50', text: 'text-slate-600' },
-  one_on_one: { label: '1对1', color: '#1677FF', bg: 'bg-blue-50', text: 'text-blue-600' },
-  interview: { label: '面试', color: '#F59E0B', bg: 'bg-amber-50', text: 'text-amber-600' },
-  birthday: { label: '生日', color: '#EC4899', bg: 'bg-pink-50', text: 'text-pink-600' },
-  onboarding: { label: '入职', color: '#10B981', bg: 'bg-emerald-50', text: 'text-emerald-600' },
-  offer: { label: '录用', color: '#8B5CF6', bg: 'bg-violet-50', text: 'text-violet-600' },
-  followup: { label: '跟进', color: '#EF4444', bg: 'bg-red-50', text: 'text-red-600' },
-};
 
 function CalendarPanel({ events, contacts = [], selectedDate, onDateChange, viewMode, onViewModeChange, onRefresh, heatmap = [], onSelectContact }) {
   const current = dayjs(selectedDate);
@@ -415,7 +394,7 @@ function CalendarPanel({ events, contacts = [], selectedDate, onDateChange, view
       >
         <Form form={form} layout="vertical" className="mt-4">
           <Form.Item name="title" label="事项标题" rules={[{ required: true, message: '请输入标题' }]}>
-            <Input placeholder="例如：和张伟1对1、候选人面试跟进" />
+            <Input placeholder="例如：给妈妈打电话、约小王吃饭" />
           </Form.Item>
           <Form.Item name="startTime" label="开始时间" rules={[{ required: true, message: '请选择时间' }]}>
             <DatePicker showTime format="YYYY-MM-DD HH:mm" className="!w-full" />
@@ -430,7 +409,7 @@ function CalendarPanel({ events, contacts = [], selectedDate, onDateChange, view
             <Select
               allowClear
               showSearch
-              placeholder="选择名册中的员工或候选人"
+              placeholder="选择名册中的家人、朋友或熟人"
               optionFilterProp="label"
               options={contacts.map((contact) => ({
                 value: contact.id,
@@ -452,11 +431,6 @@ function CalendarPanel({ events, contacts = [], selectedDate, onDateChange, view
       />
     </div>
   );
-}
-
-function labelForEventType(type) {
-  const found = EVENT_TYPE_OPTIONS.find((item) => item.value === type);
-  return found?.label || '普通日程';
 }
 
 function findContact(contacts, event) {

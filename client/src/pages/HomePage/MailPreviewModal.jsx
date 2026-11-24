@@ -52,15 +52,46 @@ function MailPreviewModal({ open, onClose, event, contact }) {
     }
   };
 
+  const [sending, setSending] = React.useState(false);
+  const canSendToContact = !!(event?.id && (contact?.email || event?.contact_email));
+
+  const sendToContact = async () => {
+    if (!event?.id) return;
+    if (!canSendToContact) {
+      message.warning('联系人未填写邮箱，无法发送给对方');
+      return;
+    }
+    setSending(true);
+    try {
+      const { data } = await api.post(`/api/mail/events/${event.id}/send`, { subject, body });
+      message.success(data.message || '已发送给对方');
+      onClose?.();
+    } catch (err) {
+      message.error(err?.response?.data?.message || '发送失败');
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <Modal
-      title="邮件实时预览"
+      title="问候邮件预览"
       open={open}
       onCancel={onClose}
       width={920}
       footer={[
         <Button key="refresh" onClick={refreshPreview} loading={loading}>刷新预览</Button>,
-        <Button key="save" type="primary" onClick={saveDraft}>保存草稿</Button>,
+        <Button key="save" onClick={saveDraft}>保存草稿</Button>,
+        <Button
+          key="send"
+          type="primary"
+          onClick={sendToContact}
+          loading={sending}
+          disabled={!canSendToContact}
+          title={canSendToContact ? '显式发送给联系人，不会自动代发' : '联系人需有邮箱'}
+        >
+          发送给对方
+        </Button>,
       ]}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

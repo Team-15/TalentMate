@@ -8,13 +8,11 @@ import dayjs from 'dayjs';
 import MobileHeader from '../../components/MobileHeader';
 import { useAppData } from '../../hooks/useAppData';
 import { heatmapLabel, heatmapStyle, CARE_LEVEL_OPTIONS, careLevelLabel, careLevelStyle } from '../HomePage/heatmap';
+import { CONTACT_TYPE_OPTIONS, contactTypeLabel } from '../HomePage/eventTypes';
 import { useOverlayBackHandler } from '../../native/overlays';
 import api from '../../services/api';
 
-const CONTACT_TYPES = [
-  { value: 'employee', label: '员工' },
-  { value: 'candidate', label: '候选人' },
-];
+const CONTACT_TYPES = CONTACT_TYPE_OPTIONS;
 
 /**
  * MobileDirectoryPage — 手机端名册页。
@@ -74,7 +72,7 @@ function MobileDirectoryPage() {
 
   function openAdd() {
     form.resetFields();
-    form.setFieldsValue({ contactType: 'employee', avatarColor: '#1677FF', careLevel: 'normal' });
+    form.setFieldsValue({ contactType: 'friend', avatarColor: '#1677FF', careLevel: 'normal' });
     setEditorOpen(true);
   }
 
@@ -126,7 +124,7 @@ function MobileDirectoryPage() {
   return (
     <>
       <MobileHeader
-        title="人才名册"
+        title="关系名册"
         subtitle={`联系人 ${stats.total} · 待关注 ${stats.attention} · 已安排 ${stats.scheduled}`}
         right={(
           <button
@@ -148,7 +146,7 @@ function MobileDirectoryPage() {
           size="large"
           value={keyword}
           onChange={(e) => setKeyword(e.target.value)}
-          placeholder="搜索姓名、邮箱、部门或岗位"
+          placeholder="搜索姓名、电话、邮箱或称呼"
           prefix={<SearchOutlined className="text-slate-300" />}
           className="!rounded-xl"
         />
@@ -217,9 +215,9 @@ function MobileDirectoryPage() {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="text-sm font-semibold text-slate-800 truncate">{c.name}</span>
-                        {c.contact_type === 'candidate' && (
+                        {c.contact_type && c.contact_type !== 'friend' && (
                           <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] shrink-0">
-                            候选人
+                            {contactTypeLabel(c.contact_type)}
                           </span>
                         )}
                         {c.care_level === 'high' && (
@@ -278,28 +276,28 @@ function MobileDirectoryPage() {
         <div className="mobile-content px-4">
           <Form form={form} layout="vertical" className="pt-2">
             <Form.Item name="name" label="姓名" rules={[{ required: true, message: '请输入姓名' }]}>
-              <Input size="large" placeholder="例如：张伟" />
+              <Input size="large" placeholder="例如：妈妈 / 小王" />
             </Form.Item>
-            {/* BUG-006：邮箱是服务端必填项，这里必须给出必填标识与格式校验，
-                否则用户会误判邮箱可选，提交后才被服务端拒绝 */}
             <Form.Item
               name="email"
-              label="邮箱"
+              label="邮箱（可选）"
               rules={[
-                { required: true, message: '请输入邮箱' },
                 { type: 'email', message: '邮箱格式不正确' },
               ]}
             >
-              <Input size="large" placeholder="name@example.com" />
+              <Input size="large" placeholder="有邮箱才可发送问候邮件" />
             </Form.Item>
-            <Form.Item name="contactType" label="类型">
+            <Form.Item name="phone" label="电话（可选）">
+              <Input size="large" placeholder="用于一键拨号" />
+            </Form.Item>
+            <Form.Item name="contactType" label="关系圈">
               <Select options={CONTACT_TYPES} size="large" />
             </Form.Item>
             {/* 人工指定关注等级：重点联系人的提醒阈值更低，会更早进入「需关注」 */}
             <Form.Item
               name="careLevel"
               label="关注等级"
-              extra="重点联系人阈值更低：同样天数会比普通员工更早进入需关注"
+              extra="重点联系人阈值更低：同样天数会比普通联系人更早进入需关注"
             >
               <Select options={CARE_LEVEL_OPTIONS} size="large" />
             </Form.Item>
@@ -312,16 +310,16 @@ function MobileDirectoryPage() {
                 <InputNumber min={1} max={365} className="!w-full" size="large" placeholder="如 35" />
               </Form.Item>
             </div>
-            <Form.Item name="department" label="部门">
+            <Form.Item name="department" label="怎么认识">
               <Input size="large" />
             </Form.Item>
-            <Form.Item name="role" label="岗位">
+            <Form.Item name="role" label="称呼">
               <Input size="large" />
             </Form.Item>
             <Form.Item name="birthday" label="生日">
               <DatePicker className="!w-full" size="large" inputReadOnly />
             </Form.Item>
-            <Form.Item name="onboardDate" label="入职日期">
+            <Form.Item name="onboardDate" label="相识日 / 纪念日">
               <DatePicker className="!w-full" size="large" inputReadOnly />
             </Form.Item>
             <Form.Item name="avatarColor" label="头像颜色">
@@ -346,13 +344,13 @@ function MobileDirectoryPage() {
         className="mobile-sheet"
       >
         <p className="text-xs text-slate-400 mb-2">
-          第一行为表头，需包含 name，可选 email、department、role、contact_type。
+          第一行为表头，需包含 name；email / phone 可选。
         </p>
         <Input.TextArea
           rows={8}
           value={csv}
           onChange={(e) => setCsv(e.target.value)}
-          placeholder={'name,email,department,role\n张伟,zhang@example.com,研发部,产品经理'}
+          placeholder={'name,phone,email,department,role,contact_type\n妈妈,13800000000,,家人,妈妈,family\n小王,,wang@example.com,大学同学,好友,friend'}
         />
       </Modal>
     </>

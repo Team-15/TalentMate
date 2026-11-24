@@ -65,7 +65,7 @@ async function main() {
   const tabs = [
     ['#/', '首页', ['关系概览', '今日安排', '需要关注的人', '快捷操作']],
     ['#/calendar', '日程', ['关怀', '本月']],
-    ['#/contacts', '名册', ['人才名册']],
+    ['#/contacts', '名册', ['关系名册']],
     ['#/insights', '洞察', ['关系洞察', '关怀概览']],
   ];
   for (const [hash, label, expects] of tabs) {

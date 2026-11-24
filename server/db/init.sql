@@ -43,13 +43,16 @@ CREATE TABLE IF NOT EXISTS events (
   INDEX idx_reminded (reminded, start_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- TalentMate V2: people directory
+-- TalentMate: personal relationship directory
+-- contact_type: family / friend / acquaintance
+-- department: 关系圈/怎么认识；role: 称呼；onboard_date: 相识日/纪念日
 CREATE TABLE IF NOT EXISTS contacts (
   id            INT          PRIMARY KEY AUTO_INCREMENT,
   user_id       INT          NOT NULL,
   name          VARCHAR(80)  NOT NULL,
   email         VARCHAR(120) DEFAULT NULL,
-  contact_type  VARCHAR(30)  DEFAULT 'employee',
+  phone         VARCHAR(40)  DEFAULT NULL,
+  contact_type  VARCHAR(30)  DEFAULT 'friend',
   department    VARCHAR(80)  DEFAULT NULL,
   role          VARCHAR(120) DEFAULT NULL,
   birthday      DATE         DEFAULT NULL,

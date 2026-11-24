@@ -84,7 +84,7 @@ function MainLayout() {
             <span className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold">TM</span>
             <div>
               <h1 className="text-lg font-semibold text-slate-900 leading-tight">TalentMate 伴贤</h1>
-              <p className="text-xs text-slate-500 mt-0.5">语音驱动的职场关系关怀工作台</p>
+              <p className="text-xs text-slate-500 mt-0.5">语音驱动的私人关系关怀工作台</p>
             </div>
           </div>
           <div className="hidden md:flex items-center gap-2 text-xs text-slate-500">
@@ -167,7 +167,7 @@ function MainLayout() {
           },
           {
             title: '用语音安排关怀',
-            description: '点击麦克风，直接说：「明天下午三点安排和张伟的一对一沟通」。',
+            description: '点击麦克风，直接说：「周末提醒我给妈妈打电话」。',
             target: () => micRef.current,
           },
         ]}

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Spin } from 'antd';
 import MobileHeader from '../../components/MobileHeader';
+import ContactActionBar from '../../components/ContactActionBar';
 import { useAppData } from '../../hooks/useAppData';
 import {
   heatmapLabel, heatmapStyle, sortHeatmap, summarizeHeatmap,
@@ -24,7 +25,7 @@ const GROUPS = [
  */
 function MobileInsightsPage() {
   const navigate = useNavigate();
-  const { heatmap, contacts, loading, refreshAll } = useAppData();
+  const { heatmap, contacts, loading, refreshAll, refreshHeatmap } = useAppData();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const summary = React.useMemo(() => summarizeHeatmap(heatmap), [heatmap]);
@@ -102,14 +103,14 @@ function MobileInsightsPage() {
               </div>
               <p className="text-[11px] text-slate-400 mb-3">{group.hint}</p>
 
-              <ul className="space-y-1 list-none p-0 m-0">
+              <ul className="space-y-2 list-none p-0 m-0">
                 {group.items.map((item) => (
-                  <li key={item.id}>
+                  <li key={item.id} className="rounded-xl bg-slate-50/60 p-2.5">
                     <button
                       type="button"
                       onClick={() => navigate(`/contacts/${item.id}`)}
-                      className="w-full text-left flex items-center gap-3 py-2.5 border-0
-                        bg-transparent cursor-pointer active:bg-slate-50 rounded-lg"
+                      className="w-full text-left flex items-center gap-3 py-1 border-0
+                        bg-transparent cursor-pointer rounded-lg"
                     >
                       <span
                         className="w-9 h-9 rounded-full text-white text-sm font-semibold flex items-center justify-center shrink-0"
@@ -118,7 +119,14 @@ function MobileInsightsPage() {
                         {(item.name || '?').slice(-1)}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-slate-800 truncate">{item.name}</span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="block text-sm font-medium text-slate-800 truncate">{item.name}</span>
+                          {item.has_upcoming && group.status !== 'scheduled' && (
+                            <span className="px-1.5 py-0.5 rounded-full border text-[10px] shrink-0 bg-blue-50 text-blue-600 border-blue-100">
+                              已安排
+                            </span>
+                          )}
+                        </span>
                         <span className="block text-xs text-slate-400 truncate mt-0.5">
                           {item.reason || [item.department, item.role].filter(Boolean).join(' · ') || '—'}
                         </span>
@@ -127,6 +135,15 @@ function MobileInsightsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
+                    {(group.status === 'danger' || group.status === 'warning' || group.status === 'new') && (
+                      <ContactActionBar
+                        dense
+                        contactId={item.id}
+                        contactName={item.name}
+                        phone={item.phone}
+                        onDone={() => refreshHeatmap()}
+                      />
+                    )}
                   </li>
                 ))}
               </ul>

@@ -38,10 +38,10 @@ function encodeWAV(samples, sampleRate) {
 }
 
 const QUICK_COMMANDS = [
-  { icon: '1:1', label: '安排1对1' },
-  { icon: 'HR', label: '面试跟进' },
-  { icon: 'BD', label: '生日关怀' },
-  { icon: 'IN', label: '入职沟通' },
+  { icon: '聊', label: '聊聊近况' },
+  { icon: 'BD', label: '生日祝福' },
+  { icon: '节', label: '节日问候' },
+  { icon: '约', label: '约见面' },
 ];
 
 /**
@@ -192,7 +192,7 @@ function ChatPanel({ messages, onVoiceResult, username, onLogout, onRefresh, onC
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-800">关怀助手</h3>
-            <p className="text-xs text-slate-400">安排、跟进与邮件草稿</p>
+            <p className="text-xs text-slate-400">安排联系与问候邮件草稿</p>
           </div>
         </div>
         {/* User menu */}
@@ -233,10 +233,10 @@ function ChatPanel({ messages, onVoiceResult, username, onLogout, onRefresh, onC
                   key={cmd.label}
                   onClick={() => {
                     const hints = {
-                      '安排1对1': '请说「明天下午三点安排和张伟的一对一沟通」',
-                      '面试跟进': '请说「明天上午十点给李候选安排面试跟进」',
-                      '生日关怀': '请说「下周一给王芳安排生日祝福」',
-                      '入职沟通': '请说「周五下午安排和赵敏的入职沟通」',
+                      '聊聊近况': '请说「周末提醒我给妈妈打电话」',
+                      '生日祝福': '请说「下周一给王芳安排生日祝福」',
+                      '节日问候': '请说「中秋节给小王发节日问候」',
+                      '约见面': '请说「下周五约小李吃饭」',
                     };
                     onVoiceResult?.({ transcript: cmd.label, message: hints[cmd.label] || '', intent: {} });
                   }}

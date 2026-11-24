@@ -490,9 +490,10 @@ async function resolveContact(userId, intentResult) {
 
 function extractContactName(title) {
   const patterns = [
-    /和(.+?)(?:的)?(?:1对1|一对一|沟通|面谈|面试)/,
-    /给(.+?)(?:发|安排|创建|加)/,
-    /(.+?)(?:的)?(?:生日|入职周年|面试邀请|录用确认)/,
+    /给(.+?)(?:打电话|发消息|发邮件|安排|创建|加|送|约)/,
+    /和(.+?)(?:的)?(?:聊聊|近况|见面|吃饭|聚会|拜访|沟通)/,
+    /约(.+?)(?:吃饭|见面|聚会|出来)/,
+    /(.+?)(?:的)?(?:生日|纪念日|节日问候|道谢)/,
   ];
   for (const pattern of patterns) {
     const match = title.match(pattern);
@@ -519,12 +520,18 @@ function normalizeSearchKeyword(keyword, contactName) {
 
 function eventTypeCondition(eventType) {
   const map = {
-    one_on_one: ['沟通', '面谈', '1对1', '一对一'],
-    interview: ['面试'],
+    catch_up: ['聊聊', '近况', '打电话', '沟通'],
     birthday: ['生日'],
-    onboarding: ['入职', '周年'],
-    offer: ['录用', 'offer'],
-    followup: ['跟进'],
+    anniversary: ['纪念日', '周年'],
+    festival: ['节日', '春节', '中秋', '元旦', '圣诞'],
+    visit: ['见面', '拜访', '吃饭', '聚会'],
+    thanks: ['道谢', '谢谢', '回礼'],
+    // legacy
+    one_on_one: ['聊聊', '近况', '沟通', '1对1', '一对一'],
+    interview: ['聊聊'],
+    onboarding: ['纪念日', '周年'],
+    offer: ['联系'],
+    followup: ['跟进', '聊聊'],
   };
   const keywords = map[eventType] || [];
   return {
@@ -542,18 +549,29 @@ function hasExplicitDatePhrase(text) {
 }
 
 function inferEventType(text) {
-  if (/1对1|一对一|面谈|沟通/.test(text)) return 'one_on_one';
-  if (/面试/.test(text)) return 'interview';
   if (/生日/.test(text)) return 'birthday';
-  if (/入职|周年/.test(text)) return 'onboarding';
-  if (/录用|offer/i.test(text)) return 'offer';
-  if (/跟进/.test(text)) return 'followup';
+  if (/纪念日|结婚纪念|相识纪念/.test(text)) return 'anniversary';
+  if (/节日|春节|中秋|元旦|圣诞/.test(text)) return 'festival';
+  if (/见面|拜访|吃饭|聚会|约/.test(text)) return 'visit';
+  if (/道谢|谢谢|回礼/.test(text)) return 'thanks';
+  if (/聊聊|近况|打电话|聊聊天|沟通|1对1|一对一/.test(text)) return 'catch_up';
+  // legacy workplace phrases → personal equivalents
+  if (/面试|录用|offer|跟进|入职/i.test(text)) return 'catch_up';
   return 'general';
 }
 
+/** 新枚举 + 旧职场值映射到新值，保证读写兼容 */
 function normalizeEventType(value) {
-  const allowed = new Set(['general', 'one_on_one', 'interview', 'birthday', 'onboarding', 'offer', 'followup']);
-  return allowed.has(value) ? value : 'general';
+  const legacy = {
+    one_on_one: 'catch_up',
+    interview: 'catch_up',
+    onboarding: 'anniversary',
+    offer: 'thanks',
+    followup: 'catch_up',
+  };
+  const mapped = legacy[value] || value;
+  const allowed = new Set(['general', 'catch_up', 'birthday', 'anniversary', 'festival', 'visit', 'thanks']);
+  return allowed.has(mapped) ? mapped : 'general';
 }
 
 module.exports = router;

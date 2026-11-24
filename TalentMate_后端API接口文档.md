@@ -184,7 +184,7 @@ interface Contact {
   user_id: number;
   name: string;
   email: string | null;
-  contact_type: 'employee' | 'candidate';
+  contact_type: 'family' | 'friend' | 'acquaintance';
   department: string | null;
   role: string | null;
   birthday: string | null;
@@ -245,33 +245,26 @@ interface InteractionLog {
 ### ContactType
 
 ```
-employee   员工
-candidate  候选人
+family         家人
+friend         朋友
+acquaintance   熟人
 ```
 
-联系人接口也接受中文值 `员工` 和 `候选人`，服务端会进行转换。Android 端建议始终发送英文值。
+联系人接口也接受中文值 `家人` / `朋友` / `熟人`，服务端会进行转换。旧职场值 `employee`/`candidate`（及中文「员工」「候选人」）会分别映射为 `friend` / `acquaintance`。Android 端建议始终发送英文值。
 
 ### EventType
 
 ```
 general       普通日程
-one_on_one    1 对 1 沟通
-interview     面试
-birthday      生日关怀
-onboarding    入职或周年
-offer         录用沟通
-followup      候选人跟进
+catch_up      聊聊近况
+birthday      生日祝福
+anniversary   纪念日
+festival      节日问候
+visit         见面/拜访
+thanks        道谢/回礼
 ```
 
-> 正确枚举值是 
->
-> `offer`
->
-> ，前面的空格仅用于排版时应去掉。实际请求必须发送字符串 
->
-> `offer`
->
-> 。
+旧职场事件值 `one_on_one` / `interview` / `onboarding` / `offer` / `followup` 在读写时会映射到上表对应类型。新建请使用新枚举。
 
 ### MailStatus
 
@@ -535,7 +528,7 @@ GET /api/events?startDate=2026-09-01%2000:00:00\&endDate=2026-10-01%2000:00:00
       "reminder": 10,
       "reminded": 0,
       "contact_id": 8,
-      "event_type": "one_on_one",
+      "event_type": "catch_up",
       "mail_status": "draft",
       "mail_subject": null,
       "mail_body_override": null,
@@ -544,7 +537,7 @@ GET /api/events?startDate=2026-09-01%2000:00:00\&endDate=2026-10-01%2000:00:00
       "contact_department": "产品部",
       "contact_role": "产品经理",
       "contact_avatar_color": "#1677FF",
-      "contact_type": "employee"
+      "contact_type": "friend"
     }
   ]
 }
@@ -581,7 +574,7 @@ Content-Type: application/json
   "endTime": "2026-09-15 16:00",
   "reminder": 10,
   "contactId": 8,
-  "eventType": "one_on_one",
+  "eventType": "catch_up",
   "mailStatus": "draft"
 }
 ```
@@ -656,7 +649,7 @@ interface UpdateEventRequest {
     "end_time": "2026-09-15 17:00:00",
     "reminder": 10,
     "contact_id": 8,
-    "event_type": "one_on_one",
+    "event_type": "catch_up",
     "mail_status": "draft",
     "contact_name": "张伟"
   }
@@ -719,12 +712,12 @@ Authorization: Bearer \$TOKEN
 | 参数        | 类型     | 必填 | 说明                             |
 | --------- | ------ | -- | ------------------------------ |
 | `keyword` | string | 否  | 模糊匹配姓名、邮箱、部门或岗位                |
-| `type`    | string | 否  | `all`、`employee` 或 `candidate` |
+| `type`    | string | 否  | `all`、`family`、`friend` 或 `acquaintance` |
 
 示例：
 
 ```
-GET /api/contacts?keyword=张\&type=employee
+GET /api/contacts?keyword=妈\&type=family
 ```
 
 成功响应：
@@ -738,7 +731,7 @@ GET /api/contacts?keyword=张\&type=employee
       "user_id": 3,
       "name": "张伟",
       "email": "zhangwei@example.com",
-      "contact_type": "employee",
+      "contact_type": "friend",
       "department": "产品部",
       "role": "产品经理",
       "birthday": "1995-05-18",
@@ -768,7 +761,7 @@ Content-Type: application/json
 | ------------- | ----------- | -- | ------------------------ |
 | `name`        | string      | 是  | 姓名                       |
 | `email`       | string      | 是  | 邮箱                       |
-| `contactType` | ContactType | 是  | `employee` 或 `candidate` |
+| `contactType` | ContactType | 是  | `family` / `friend` / `acquaintance` |
 | `department`  | string/null | 否  | 部门                       |
 | `role`        | string/null | 否  | 岗位或求职岗位                  |
 | `birthday`    | string/null | 否  | `YYYY-MM-DD`             |
@@ -782,7 +775,7 @@ Content-Type: application/json
 {
   "name": "张伟",
   "email": "zhangwei@example.com",
-  "contactType": "employee",
+  "contactType": "friend",
   "department": "产品部",
   "role": "产品经理",
   "birthday": "1995-05-18",
@@ -802,7 +795,7 @@ Content-Type: application/json
     "id": 8,
     "name": "张伟",
     "email": "zhangwei@example.com",
-    "contact_type": "employee"
+    "contact_type": "friend"
   }
 }
 ```
@@ -814,7 +807,7 @@ Content-Type: application/json
 | 400 | 姓名为空   | `姓名为必填项`      |
 | 400 | 邮箱为空   | `邮箱为必填项`      |
 | 400 | 邮箱格式错误 | `邮箱格式不正确`     |
-| 400 | 类型非法   | `类型必须是员工或候选人` |
+| 400 | 类型非法   | `类型必须是家人、朋友或熟人` |
 | 500 | 创建失败   | `添加联系人失败`     |
 
 ## 7.3 更新联系人
@@ -851,7 +844,7 @@ Content-Type: application/json
     "id": 8,
     "name": "张伟",
     "email": "zhangwei@example.com",
-    "contact_type": "employee",
+    "contact_type": "friend",
     "department": "研发部",
     "role": "产品经理"
   }
@@ -903,7 +896,7 @@ Content-Type: application/json
 
 ```
 {
-  "csv": "姓名,邮箱,类型,部门,岗位,生日,入职时间,备注\n张伟,zhangwei@example.com,员工,产品部,产品经理,1995-05-18,2025-01-10,每月沟通"
+  "csv": "姓名,邮箱,类型,关系圈,称呼,生日,相识日,备注\n妈妈,mom@example.com,family,家人,妈妈,1965-05-18,1990-01-10,每周联系"
 }
 ```
 
@@ -962,7 +955,7 @@ Authorization: Bearer \$TOKEN
       "id": 8,
       "name": "张伟",
       "email": "zhangwei@example.com",
-      "contact_type": "employee"
+      "contact_type": "friend"
     },
     "logs": [
       {
@@ -971,11 +964,11 @@ Authorization: Bearer \$TOKEN
         "event_id": 18,
         "action_type": "event_created",
         "title": "和张伟进行 1 对 1 沟通",
-        "detail": "创建了 one_on_one 日程",
+        "detail": "创建了 catch_up 日程",
         "occurred_at": "2026-09-15 15:00:00",
         "start_time": "2026-09-15 15:00:00",
         "end_time": "2026-09-15 16:00:00",
-        "event_type": "one_on_one",
+        "event_type": "catch_up",
         "mail_status": "draft"
       }
     ],
@@ -1014,7 +1007,7 @@ Authorization: Bearer \$TOKEN
       "id": 8,
       "name": "张伟",
       "email": "zhangwei@example.com",
-      "contact_type": "employee",
+      "contact_type": "friend",
       "last_event_at": "2026-08-01 10:00:00",
       "last_log_at": "2026-08-03 14:00:00",
       "next_event_at": null,
@@ -1023,7 +1016,7 @@ Authorization: Bearer \$TOKEN
       "last_interaction_at": "2026-08-03 14:00:00",
       "days_since_interaction": 40,
       "status": "warning",
-      "reason": "40 天未 1对1"
+      "reason": "朋友 · 40 天未联系"
     }
   ]
 }
@@ -1031,10 +1024,13 @@ Authorization: Bearer \$TOKEN
 
 判定规则：
 
-| 对象  | warning | danger  |
+| 关系圈 | warning | danger  |
 | --- | ------- | ------- |
-| 员工  | 30 天未互动 | 45 天未互动 |
-| 候选人 | 7 天未互动  | 14 天未互动 |
+| 家人 family | 14 天未互动 | 21 天未互动 |
+| 朋友 friend | 30 天未互动 | 45 天未互动 |
+| 熟人 acquaintance | 60 天未互动 | 90 天未互动 |
+
+以上为 `care_level=normal` 的基准；`high`/`low` 会缩放天数，自定义 `care_warn_days` / `care_danger_days` 可覆盖。
 
 状态优先级：
 
@@ -1237,7 +1233,7 @@ const response = await voiceApi.post(
       "queryKeywords": "",
       "queryDate": "2026-09-15",
       "contactName": "张伟",
-      "eventType": "one_on_one",
+      "eventType": "catch_up",
       "rawTranscript": "下周二下午三点安排和张伟的一对一沟通"
     },
     "eventIds": [18],
@@ -1249,7 +1245,7 @@ const response = await voiceApi.post(
         "end_time": "2026-09-15 16:00",
         "reminder": 10,
         "contact_id": 8,
-        "event_type": "one_on_one",
+        "event_type": "catch_up",
         "mail_status": "draft",
         "contact_name": "张伟"
       }
@@ -1292,7 +1288,7 @@ HTTP 状态仍为 200，`success` 为 true，但客户端必须继续让用户�
     "intent": {
       "intent": "add",
       "contactName": "张伟",
-      "eventType": "one_on_one",
+      "eventType": "catch_up",
       "events": [
         {
           "title": "和张伟一对一",
@@ -1326,7 +1322,7 @@ HTTP 状态仍为 200，`success` 为 true，但客户端必须继续让用户�
     "pendingIntent": {
       "intent": "add",
       "contactName": "张伟",
-      "eventType": "one_on_one",
+      "eventType": "catch_up",
       "events": [
         {
           "title": "和张伟一对一",
@@ -1423,7 +1419,7 @@ Content-Type: application/json
   "pendingIntent": {
     "intent": "add",
     "contactName": "张伟",
-    "eventType": "one_on_one",
+    "eventType": "catch_up",
     "events": [
       {
         "title": "和张伟一对一",
@@ -1446,7 +1442,7 @@ Content-Type: application/json
     "intent": {
       "intent": "add",
       "contactName": "张伟",
-      "eventType": "one_on_one",
+      "eventType": "catch_up",
       "events": []
     },
     "eventIds": [18],
@@ -1536,7 +1532,7 @@ const response = await api.post('/api/events', {
   endTime: '2026-09-15 16:00',
   reminder: 10,
   contactId: 8,
-  eventType: 'one_on_one',
+  eventType: 'catch_up',
   mailStatus: 'draft',
 });
 const eventId = response.data.data.id;

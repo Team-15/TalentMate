@@ -1,7 +1,7 @@
-# Copilot 指令 – 语音日历助手
+# Copilot 指令 – TalentMate 私人关系关怀助手
 
 ## 项目概述
-这是一个以语音交互为核心的 Web 日历管理工具，支持用户通过自然语言添加、删除、查看日程，并提供浏览器和邮件双通道提醒。采用前后端分离架构，使用 React 18 + Ant Design 5 构建现代风格前端，Node.js + Express 构建后端，数据持久化到 MySQL 8.0。
+这是一个以语音交互为核心的私人关系关怀助手（TalentMate 伴贤）：维护家人/朋友/熟人名册，安排关怀日程，生成问候邮件，并展示关系热力图。采用前后端分离架构，React 18 + Ant Design 5 + Capacitor（Android），Node.js + Express，MySQL 8.0。
 
 ## 通用约定
 - 所有代码注释和标识符使用英文，用户可见的 UI 文本使用中文。
@@ -34,7 +34,7 @@
 - 组件使用函数组件 + Hooks，避免类组件。
 - 含 JSX 的文件必须使用 `.jsx` 扩展名（Vite 要求）。
 - 每个页面组件放在独立文件夹中，配对应的 `.module.css` CSS Module 文件。
-- 使用 Ant Design 组件时，优先按项目 UI 风格定制：腾讯招聘风格亮蓝主色 (#1677FF)，渐变 (#1677FF → #0052D9)，白色圆角卡片 (16px)，浅阴影。所有按钮、输入框等均使用 antd 组件，避免原生 HTML 控件。
+- 使用 Ant Design 组件时，优先按项目 UI 风格定制：亮蓝主色 (#1677FF)，渐变 (#1677FF → #0052D9)，白色圆角卡片 (16px)，浅阴影。所有按钮、输入框等均使用 antd 组件，避免原生 HTML 控件。
 - CSS 变量定义在 `styles/global.css` 的 `:root` 中，CSS Module 通过 `var(--xxx)` 引用。
 - 所有网络请求必须通过 `services/api.js` 中创建的 Axios 实例，该实例已配置 baseURL 和 JWT 拦截器。
 - JWT token 存储在 localStorage 中，键名为 `token`，用户名键名为 `username`。

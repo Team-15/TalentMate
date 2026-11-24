@@ -116,25 +116,55 @@ function renderCareEmail({ contact = {}, event = {}, bodyOverride = null }) {
 
 function buildCareSubject(eventType, title, name) {
   const map = {
-    one_on_one: `${name}，一次 1对1 沟通安排`,
-    interview: `${name}，面试安排确认`,
-    birthday: `${name}，生日祝福`,
-    onboarding: `${name}，入职沟通安排`,
-    offer: `${name}，录用沟通安排`,
+    catch_up: `${name}，想和你聊聊近况`,
+    birthday: `${name}，生日快乐`,
+    anniversary: `${name}，纪念日快乐`,
+    festival: `${name}，节日问候`,
+    visit: `${name}，想约你见面`,
+    thanks: `${name}，想说声谢谢`,
+    // legacy workplace types → personal-friendly subjects
+    one_on_one: `${name}，想和你聊聊近况`,
+    interview: `${name}，想和你聊一聊`,
+    onboarding: `${name}，纪念日问候`,
+    offer: `${name}，想和你联系一下`,
+    followup: `${name}，想和你聊聊近况`,
   };
   return map[eventType] || title;
 }
 
 function buildCareBody(eventType, name, title, startTime) {
-  const timeText = startTime ? `时间暂定为 ${startTime}。` : '具体时间请以后续日程为准。';
+  const timeText = startTime ? `时间暂定为 ${startTime}。` : '具体时间我们可以再约。';
   const map = {
-    one_on_one: `想和你做一次轻量的 1对1 沟通，聊聊近期工作状态、协作感受以及需要支持的地方。\n${timeText}`,
-    interview: `感谢你对岗位的关注，我们希望和你进一步沟通岗位匹配情况。\n${timeText}`,
-    birthday: `今天是一个值得被认真记住的日子。祝你生日快乐，也感谢你一直以来的投入与陪伴。`,
-    onboarding: `欢迎加入团队。我们准备了一次入职沟通，帮助你更顺畅地熟悉团队和工作节奏。\n${timeText}`,
-    offer: `很高兴与你沟通后续录用安排。我们会在这次沟通中确认关键细节。\n${timeText}`,
+    catch_up: `好久没好好聊聊了，想听听你最近过得怎么样，也跟你说说我这边的近况。\n${timeText}`,
+    birthday: `今天是属于你的日子。祝你生日快乐，一切顺利，也谢谢你一直以来的陪伴。`,
+    anniversary: `今天是一个值得被记住的日子。想和你一起回味这段时光，也送上我的祝福。\n${timeText}`,
+    festival: `节日到了，想专门跟你打个招呼，祝你平安喜乐、事事顺心。\n${timeText}`,
+    visit: `想约你见面叙叙旧，吃顿饭或随便走走都行。\n${timeText}`,
+    thanks: `想专门跟你说一声谢谢。你的帮助和陪伴对我很重要，希望有机会当面再谢一次。\n${timeText}`,
+    one_on_one: `好久没好好聊聊了，想听听你最近过得怎么样。\n${timeText}`,
+    interview: `想和你找个时间聊一聊近况。\n${timeText}`,
+    onboarding: `今天是一个值得被记住的日子，想专门送上问候。\n${timeText}`,
+    offer: `想和你联系一下，看看最近过得怎么样。\n${timeText}`,
+    followup: `想跟进一下我们之前聊过的事，也顺便听听你近况。\n${timeText}`,
   };
-  return map[eventType] || `关于「${title}」的安排已创建。\n${timeText}`;
+  return map[eventType] || `关于「${title}」，想跟你确认一下安排。\n${timeText}`;
+}
+
+/**
+ * Explicitly send a care email (HTML) to a contact.
+ * Used only when the user taps「发送给对方」— never by the reminder cron.
+ */
+async function sendCareHtmlEmail(to, subject, text, html) {
+  const transporter = getTransporter();
+  const info = await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to,
+    subject,
+    text,
+    html,
+  });
+  console.log(`[Email] Care mail sent to ${to}: ${info.messageId}`);
+  return info;
 }
 
 function escapeHtml(value) {
@@ -146,4 +176,4 @@ function escapeHtml(value) {
     .replace(/'/g, '&#39;');
 }
 
-module.exports = { sendReminderEmail, renderCareEmail };
+module.exports = { sendReminderEmail, renderCareEmail, sendCareHtmlEmail };

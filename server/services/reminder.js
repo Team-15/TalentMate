@@ -1,10 +1,11 @@
 /**
  * Reminder Service.
  * Scans every 15 seconds for events needing reminders.
- * Sends email notifications and marks events as reminded.
+ *
+ * Personal-care product rule: reminders always go to the USER (self).
+ * Care emails to contacts are never auto-sent here — only via explicit send API.
  */
-const { sendReminderEmail, renderCareEmail } = require('./emailService');
-const { logInteraction } = require('./interactions');
+const { sendReminderEmail } = require('./emailService');
 
 let pool = null;
 let intervalId = null;
@@ -29,18 +30,14 @@ async function checkAndSendReminders() {
   if (!pool) return;
 
   try {
-    // Threshold in LOCAL time (dateStrings:true stores DATETIME as-is, no UTC conversion)
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
-    const threshold = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const threshold = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     console.log('[Reminder] Threshold:', threshold);
 
-    // Find events where reminder time has arrived and not yet reminded
     const [events] = await pool.query(`
       SELECT e.*, u.email, u.username,
-             c.name AS contact_name, c.email AS contact_email,
-             c.department AS contact_department, c.role AS contact_role,
-             c.contact_type, c.avatar_color
+             c.name AS contact_name, c.email AS contact_email
       FROM events e
       JOIN users u ON e.user_id = u.id
       LEFT JOIN contacts c ON c.id = e.contact_id AND c.user_id = e.user_id
@@ -51,55 +48,33 @@ async function checkAndSendReminders() {
     console.log(`[Reminder] Scan found ${events.length} event(s)`);
 
     for (const event of events) {
-      // 每个事件单独兜住异常。
-      // 以前发送失败会直接冒泡到外层 catch，导致两个问题：
-      //   1) 该事件永远不写 reminded=1，每 15 秒重发同一封退信邮件（实测每小时 240 次、480 条错误日志）
-      //   2) 同一批里后面的事件全部被跳过
       try {
-        if (event.contact_email) {
-          console.log('[Reminder] Sending care email for:', event.title, 'to', event.contact_email);
-          const preview = renderCareEmail({
-            contact: {
-              name: event.contact_name,
-              email: event.contact_email,
-              department: event.contact_department,
-              role: event.contact_role,
-            },
-            event: {
-              title: event.title,
-              start_time: formatDateTimeStr(event.start_time),
-              event_type: event.event_type,
-              mail_subject: event.mail_subject,
-              mail_body_override: event.mail_body_override,
-            },
-          });
-          await sendHtmlEmail(event.contact_email, preview.subject, preview.body, preview.html);
-          await pool.query('UPDATE events SET mail_status = ? WHERE id = ?', ['sent', event.id]);
-          await logInteraction(pool, {
-            userId: event.user_id,
-            contactId: event.contact_id,
-            eventId: event.id,
-            actionType: 'mail_sent',
-            title: preview.subject,
-            detail: `关怀邮件已发送至 ${event.contact_email}`,
-          });
-        } else {
-          // Send email reminder to the owner when no target contact is bound.
-          console.log('[Reminder] Sending email for:', event.title, 'to', event.email);
+        // Always remind the owner — never auto-email the contact.
+        const title = event.contact_name
+          ? `${event.title}（联系 ${event.contact_name}）`
+          : event.title;
+        console.log('[Reminder] Sending self reminder for:', event.title, 'to', event.email);
+        if (event.email) {
           await sendReminderEmail(
             event.email,
-            event.title,
+            title,
             formatDateTimeStr(event.start_time),
             event.reminder
           );
         }
 
-        // Mark as reminded
+        // If bound to a contact and no mail yet, leave a draft slot for optional send-to-contact
+        if (event.contact_id && (!event.mail_status || event.mail_status === 'none')) {
+          await pool.query(
+            `UPDATE events SET mail_status = 'draft' WHERE id = ? AND user_id = ?`,
+            [event.id, event.user_id]
+          );
+        }
+
         await pool.query('UPDATE events SET reminded = 1 WHERE id = ?', [event.id]);
         console.log(`[Reminder] Processed event #${event.id}: "${event.title}" for user ${event.username}`);
       } catch (err) {
         console.error(`[Reminder] 事件 #${event.id} 提醒失败（不再重试）：${err.message}`);
-        // 失败同样标记，避免无限重发；具体原因留在日志里
         await pool.query('UPDATE events SET reminded = 1 WHERE id = ?', [event.id])
           .catch((e2) => console.error('[Reminder] 标记失败状态时出错:', e2.message));
       }
@@ -107,28 +82,6 @@ async function checkAndSendReminders() {
   } catch (err) {
     console.error('[Reminder] Error checking reminders:', err);
   }
-}
-
-async function sendHtmlEmail(to, subject, text, html) {
-  const nodemailer = require('nodemailer');
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT, 10),
-    secure: parseInt(process.env.SMTP_PORT, 10) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    dns: { family: 4 },
-    connectionTimeout: 15000,
-  });
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
-    subject,
-    text,
-    html,
-  });
 }
 
 /**

@@ -50,7 +50,7 @@ const factory = new Function(
 const validateEventFields = factory();
 
 const CASES = [
-  ['正常日程', { title: '和张伟1对1', startTime: '2026-10-08 10:00' }, true],
+  ['正常日程', { title: '给妈妈打电话', startTime: '2026-10-08 10:00' }, true],
   ['标题恰好 200 字符', { title: 'x'.repeat(200), startTime: '2026-10-08 10:00' }, true],
   ['标题 201 字符', { title: 'x'.repeat(201), startTime: '2026-10-08 10:00' }, false],
   ['超长标题 1000 字符', { title: 'x'.repeat(1000), startTime: '2026-10-08 10:00' }, false],

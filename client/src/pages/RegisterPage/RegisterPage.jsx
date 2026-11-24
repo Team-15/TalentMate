@@ -101,7 +101,7 @@ function RegisterPage() {
           block
           className="!h-12"
         >
-          创建工作台
+          创建账户
         </Button>
       </Form.Item>
     </Form>
@@ -117,7 +117,7 @@ function RegisterPage() {
             TM
           </div>
           <h1 className="text-xl font-semibold text-slate-900 mt-4">TalentMate 伴贤</h1>
-          <p className="text-xs text-slate-400 mt-1.5">创建你的个人职场关系库</p>
+          <p className="text-xs text-slate-400 mt-1.5">创建你的私人关系库</p>
         </div>
 
         <div className="mt-6">{form}</div>
@@ -147,7 +147,7 @@ function RegisterPage() {
           TalentMate 伴贤
         </Title>
         <Text className="block text-center mb-5 text-slate-400">
-          创建你的个人职场关系库
+          创建你的私人关系库
         </Text>
 
         {form}

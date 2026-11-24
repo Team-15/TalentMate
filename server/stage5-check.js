@@ -121,12 +121,23 @@ check('renderCareEmail 转义正文覆盖内容', () => {
 
 check('邮件模板保留正常可读内容', () => {
   const { html, subject, body } = renderCareEmail({
-    contact: { name: '张伟' },
-    event: { title: '1对1 沟通', start_time: '2026-10-07 10:00:00', event_type: 'one_on_one' },
+    contact: { name: '妈妈' },
+    event: { title: '给妈妈打电话', start_time: '2026-10-07 10:00:00', event_type: 'catch_up' },
   });
-  assert.ok(html.includes('张伟'), '姓名丢失');
-  assert.ok(html.includes('1对1 沟通'), '标题丢失');
+  assert.ok(html.includes('妈妈'), '姓名丢失');
+  assert.ok(html.includes('给妈妈打电话'), '标题丢失');
+  assert.ok(subject.includes('聊聊近况') || subject.includes('妈妈'), '私人语气主题缺失');
+  assert.ok(body.includes('近况') || body.includes('怎么样'), '私人语气正文缺失');
   assert.ok(subject && body, 'subject/body 为空');
+});
+
+check('旧职场事件类型仍可生成私人邮件', () => {
+  const { subject, body } = renderCareEmail({
+    contact: { name: '张伟' },
+    event: { title: '旧日程', event_type: 'one_on_one' },
+  });
+  assert.ok(subject.includes('聊聊近况'), 'legacy one_on_one 主题未映射');
+  assert.ok(body.includes('聊聊') || body.includes('近况'), 'legacy one_on_one 正文未映射');
 });
 
 console.log(`\n结果：${failures === 0 ? '全部通过' : `${failures} 项失败`}`);

@@ -15,12 +15,16 @@ async function ensureSchema(pool) {
       user_id       INT          NOT NULL,
       name          VARCHAR(80)  NOT NULL,
       email         VARCHAR(120) DEFAULT NULL,
-      contact_type  VARCHAR(30)  DEFAULT 'employee',
+      phone         VARCHAR(40)  DEFAULT NULL,
+      contact_type  VARCHAR(30)  DEFAULT 'friend',
       department    VARCHAR(80)  DEFAULT NULL,
       role          VARCHAR(120) DEFAULT NULL,
       birthday      DATE         DEFAULT NULL,
       onboard_date  DATE         DEFAULT NULL,
       avatar_color  VARCHAR(20)  DEFAULT '#1677FF',
+      care_level    VARCHAR(20)  DEFAULT 'normal',
+      care_warn_days   INT DEFAULT NULL,
+      care_danger_days INT DEFAULT NULL,
       notes         TEXT         DEFAULT NULL,
       created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
       updated_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -28,6 +32,16 @@ async function ensureSchema(pool) {
       INDEX idx_contacts_type (user_id, contact_type)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+
+  // Existing DBs may miss care_* / phone columns if only ensureSchema ran before
+  await addColumnIfMissing(pool, 'contacts', 'phone', 'VARCHAR(40) DEFAULT NULL');
+  await addColumnIfMissing(pool, 'contacts', 'care_level', "VARCHAR(20) DEFAULT 'normal'");
+  await addColumnIfMissing(pool, 'contacts', 'care_warn_days', 'INT DEFAULT NULL');
+  await addColumnIfMissing(pool, 'contacts', 'care_danger_days', 'INT DEFAULT NULL');
+
+  // Migrate legacy workplace contact types to personal circles
+  await pool.query(`UPDATE contacts SET contact_type = 'friend' WHERE contact_type = 'employee'`);
+  await pool.query(`UPDATE contacts SET contact_type = 'acquaintance' WHERE contact_type = 'candidate'`);
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS interaction_logs (

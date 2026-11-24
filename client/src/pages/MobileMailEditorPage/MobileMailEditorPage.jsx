@@ -127,6 +127,30 @@ function MobileMailEditorPage() {
     }
   };
 
+  const [sending, setSending] = React.useState(false);
+  const canSendToContact = canSave && !!(targetContact?.email || event?.contact_email);
+
+  const sendToContact = async () => {
+    if (!canSave) return;
+    if (!canSendToContact) {
+      message.warning('联系人未填写邮箱，无法发送给对方');
+      return;
+    }
+    setSending(true);
+    try {
+      await api.put(`/api/mail/events/${numericId}/draft`, { subject, body });
+      const { data } = await api.post(`/api/mail/events/${numericId}/send`, { subject, body });
+      setSavedSnapshot({ subject, body });
+      message.success(data.message || '已发送给对方');
+      refreshEvents();
+      navigate(backTo, { replace: true });
+    } catch (err) {
+      message.error(err?.response?.data?.message || '发送失败，请重试');
+    } finally {
+      setSending(false);
+    }
+  };
+
   /** 离开前若有未保存内容，先确认 */
   const requestLeave = React.useCallback(() => {
     if (dirty && canSave) {
@@ -250,8 +274,19 @@ function MobileMailEditorPage() {
               />
             </div>
             <p className="text-[11px] text-slate-400 px-1">
-              正文以纯文本保存，发送时会套用关怀邮件模板。
+              正文以纯文本保存。日程提醒只会发给你自己；点「发送给对方」才会把问候邮件发出去。
             </p>
+            {canSave && (
+              <button
+                type="button"
+                onClick={sendToContact}
+                disabled={sending || !canSendToContact}
+                className="w-full min-h-[48px] rounded-xl bg-slate-900 text-white text-sm font-medium
+                  border-0 cursor-pointer disabled:opacity-50"
+              >
+                {sending ? '发送中…' : canSendToContact ? '发送给对方' : '联系人无邮箱，无法发送'}
+              </button>
+            )}
           </div>
         )}
 

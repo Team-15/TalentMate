@@ -28,18 +28,21 @@ Output ONLY valid JSON, no markdown wrapping, no extra text:
   "queryKeywords": "",
   "queryDate": "YYYY-MM-DD",
   "contactName": "",
-  "eventType": "general" | "one_on_one" | "interview" | "birthday" | "onboarding" | "offer" | "followup"
+  "eventType": "general" | "catch_up" | "birthday" | "anniversary" | "festival" | "visit" | "thanks"
 }
 
 Rules:
 - If the user mentions MULTIPLE events (e.g. "下午2点和5点开会"), create multiple objects in the "events" array.
-- If the user mentions a person, fill contactName. Example: "和小张1对1" -> contactName="小张".
-- Classify workplace care events into eventType:
-  1对1/沟通/面谈 -> one_on_one; 面试 -> interview; 生日 -> birthday; 入职/入职周年 -> onboarding; 录用/offer -> offer; 跟进 -> followup; otherwise general.
+- If the user mentions a person, fill contactName. Example: "给妈妈打电话" -> contactName="妈妈"; "约小王吃饭" -> contactName="小王".
+- Classify personal relationship care events into eventType:
+  聊聊/近况/打电话/聊聊天 -> catch_up; 生日 -> birthday; 纪念日/结婚纪念/相识纪念 -> anniversary;
+  节日/春节/中秋/元旦/圣诞 -> festival; 见面/拜访/吃饭/聚会 -> visit; 道谢/谢谢/回礼 -> thanks; otherwise general.
 
 --- INTENT: add ---
 "明天下午3点开会" → intent="add", events[0]={title:"开会",startTime:"(tomorrow) 15:00"}
-"明天下午3点和小张1对1" → intent="add", contactName="小张", eventType="one_on_one", events[0]={title:"和小张1对1",startTime:"(tomorrow) 15:00"}
+"周末提醒我给妈妈打电话" → intent="add", contactName="妈妈", eventType="catch_up", events[0]={title:"给妈妈打电话",startTime:"(weekend) 10:00"}
+"下周五约小王吃饭" → intent="add", contactName="小王", eventType="visit", events[0]={title:"约小王吃饭",startTime:"(next Friday) 18:00"}
+"下周一给王芳安排生日祝福" → intent="add", contactName="王芳", eventType="birthday", events[0]={title:"给王芳生日祝福",startTime:"(next Monday) 09:00"}
 
 --- INTENT: delete ---
 "今天不打游戏了" → intent="delete", queryKeywords="打游戏", queryDate="(today)"

@@ -5,7 +5,7 @@ import api from '../../services/api';
 /**
  * 手机端新手引导（方案 §10.10）。
  *
- * 三页：建立人才名册 → 查看关系温度 → 用语音安排互动。
+ * 三页：建立关系名册 → 查看关系温度 → 用语音安排互动。
  *
  * 权限策略：这里**不**申请麦克风或通知权限。
  * 按方案要求，只在用户真正开始使用对应能力时申请，
@@ -16,8 +16,8 @@ import api from '../../services/api';
 const PAGES = [
   {
     key: 'roster',
-    title: '建立人才名册',
-    desc: '把经常打交道的同事、候选人加进名册，之后的关怀安排都有据可依。',
+    title: '建立关系名册',
+    desc: '把家人、朋友和熟人加进名册，之后的关怀安排都有据可依。',
     accent: '#1677FF',
     art: (
       <svg viewBox="0 0 120 120" className="w-32 h-32" fill="none" stroke="currentColor">
@@ -43,7 +43,7 @@ const PAGES = [
   {
     key: 'voice',
     title: '用语音安排互动',
-    desc: '点底部的麦克风说一句「明天下午三点安排和张伟的一对一」，日程和邮件草稿会自动生成。',
+    desc: '点底部的麦克风说一句「周末提醒我给妈妈打电话」，日程和邮件草稿会自动生成。',
     accent: '#10B981',
     art: (
       <svg viewBox="0 0 120 120" className="w-32 h-32" fill="none" stroke="currentColor">

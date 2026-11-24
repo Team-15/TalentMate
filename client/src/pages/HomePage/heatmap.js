@@ -89,7 +89,8 @@ export function summarizeHeatmap(items = []) {
   return {
     danger: count('danger'),
     warning: count('warning'),
-    scheduled: count('scheduled'),
+    // 已安排：displayStatus=scheduled，或 danger/warning 但已有未来日程
+    scheduled: items.filter((item) => item.status === 'scheduled' || item.has_upcoming).length,
     new: count('new'),
     healthy: count('healthy'),
     /** 高优先级 + 需关注 */

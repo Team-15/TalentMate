@@ -53,7 +53,7 @@ function LoginPage() {
           block
           className="!h-12"
         >
-          进入工作台
+          开始使用
         </Button>
       </Form.Item>
     </Form>
@@ -69,7 +69,7 @@ function LoginPage() {
             TM
           </div>
           <h1 className="text-xl font-semibold text-slate-900 mt-4">TalentMate 伴贤</h1>
-          <p className="text-xs text-slate-400 mt-1.5">语音驱动的职场关系关怀助手</p>
+          <p className="text-xs text-slate-400 mt-1.5">语音驱动的私人关系关怀助手</p>
         </div>
 
         <div className="mt-8">{form}</div>
@@ -99,7 +99,7 @@ function LoginPage() {
           TalentMate 伴贤
         </Title>
         <Text className="block text-center mb-6 text-slate-400">
-          登录职场关系关怀工作台
+          登录私人关系关怀工作台
         </Text>
 
         {form}

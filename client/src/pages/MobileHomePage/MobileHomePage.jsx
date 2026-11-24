@@ -1,12 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Spin } from 'antd';
+import { Spin, message } from 'antd';
 import dayjs from 'dayjs';
 import MobileHeader from '../../components/MobileHeader';
+import ContactActionBar from '../../components/ContactActionBar';
 import { useAppData } from '../../hooks/useAppData';
 import { greetingForNow } from '../../hooks/useVoiceAssistant';
 import { heatmapLabel, heatmapStyle, sortHeatmap, summarizeHeatmap } from '../HomePage/heatmap';
 import { eventTypeMeta } from '../HomePage/eventTypes';
+import api from '../../services/api';
 
 /**
  * MobileHomePage — 手机端首页。
@@ -16,13 +18,52 @@ import { eventTypeMeta } from '../HomePage/eventTypes';
  */
 function MobileHomePage() {
   const navigate = useNavigate();
-  const { username, todayEvents, contacts, heatmap, loading } = useAppData();
+  const { username, todayEvents, contacts, heatmap, loading, refreshHeatmap, refreshEvents, refreshTodayEvents } = useAppData();
+  const [suggestions, setSuggestions] = React.useState([]);
+  const [festivals, setFestivals] = React.useState({ festivals: [], suggested_contacts: [] });
 
   const summary = React.useMemo(() => summarizeHeatmap(heatmap), [heatmap]);
   const attention = React.useMemo(
     () => sortHeatmap(heatmap).filter((item) => item.status === 'danger' || item.status === 'warning').slice(0, 4),
     [heatmap],
   );
+
+  const refreshSuggestions = React.useCallback(() => {
+    api.get('/api/insights/upcoming-dates', { params: { days: 7 } })
+      .then((resp) => setSuggestions(resp.data?.data || []))
+      .catch(() => setSuggestions([]));
+    api.get('/api/insights/upcoming-festivals', { params: { days: 14 } })
+      .then((resp) => setFestivals(resp.data?.data || { festivals: [], suggested_contacts: [] }))
+      .catch(() => setFestivals({ festivals: [], suggested_contacts: [] }));
+  }, []);
+
+  React.useEffect(() => { refreshSuggestions(); }, [refreshSuggestions, contacts.length]);
+
+  const createCareEvent = async (contactId, name, kind, date) => {
+    try {
+      const start = dayjs(date).hour(10).minute(0);
+      const title = kind === 'birthday'
+        ? `给${name}过生日`
+        : kind === 'anniversary'
+          ? `和${name}的纪念日`
+          : `给${name}发节日问候`;
+      await api.post('/api/events', {
+        title,
+        startTime: start.format('YYYY-MM-DD HH:mm'),
+        endTime: start.add(30, 'minute').format('YYYY-MM-DD HH:mm'),
+        reminder: 60,
+        contactId,
+        eventType: kind === 'anniversary' ? 'anniversary' : kind === 'birthday' ? 'birthday' : 'festival',
+        mailStatus: 'none',
+      });
+      message.success('已安排提醒（只会提醒你自己）');
+      refreshEvents();
+      refreshTodayEvents();
+      refreshHeatmap();
+    } catch (err) {
+      message.error(err?.response?.data?.message || '安排失败');
+    }
+  };
 
   return (
     <>
@@ -112,6 +153,76 @@ function MobileHomePage() {
           )}
         </section>
 
+        {/* 即将到来的生日 / 纪念日 */}
+        {suggestions.length > 0 && (
+          <section className="bg-white rounded-2xl p-4 shadow-sm border border-white">
+            <h2 className="text-sm font-semibold text-slate-800 mb-3">即将到来</h2>
+            <ul className="space-y-2 list-none p-0 m-0">
+              {suggestions.slice(0, 5).map((s) => (
+                <li key={`${s.kind}-${s.contact_id}`} className="flex items-center gap-3 py-1.5">
+                  <span
+                    className="w-9 h-9 rounded-full text-white text-sm font-semibold flex items-center justify-center shrink-0"
+                    style={{ background: s.avatar_color || '#EC4899' }}
+                  >
+                    {(s.name || '?').slice(-1)}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-slate-800 truncate">
+                      {s.name} · {s.label}
+                    </span>
+                    <span className="block text-xs text-slate-400 mt-0.5">
+                      {s.days_until === 0 ? '就是今天' : `${s.days_until} 天后 · ${s.date}`}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => createCareEvent(s.contact_id, s.name, s.kind, s.date)}
+                    className="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] bg-[#1677FF] text-white border-0 cursor-pointer"
+                  >
+                    提醒我
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {/* 节日建议 */}
+        {festivals.festivals?.length > 0 && (
+          <section className="bg-white rounded-2xl p-4 shadow-sm border border-white">
+            <h2 className="text-sm font-semibold text-slate-800 mb-1">节日问候</h2>
+            <p className="text-[11px] text-slate-400 mb-3">
+              {festivals.festivals[0].name}
+              {festivals.festivals[0].days_until === 0
+                ? ' · 今天'
+                : ` · ${festivals.festivals[0].days_until} 天后`}
+            </p>
+            {festivals.suggested_contacts?.length > 0 ? (
+              <ul className="space-y-2 list-none p-0 m-0">
+                {festivals.suggested_contacts.slice(0, 4).map((c) => (
+                  <li key={c.id} className="flex items-center gap-3">
+                    <span className="text-sm text-slate-800 flex-1 truncate">{c.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => createCareEvent(
+                        c.id,
+                        c.name,
+                        'festival',
+                        festivals.festivals[0].date,
+                      )}
+                      className="shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] border border-slate-200 bg-white text-slate-600 cursor-pointer"
+                    >
+                      安排问候
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-slate-400">把家人或重点联系人标出来后，这里会给出建议</p>
+            )}
+          </section>
+        )}
+
         {/* 需要关注的人 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm border border-white">
           <div className="flex items-center justify-between mb-3">
@@ -132,13 +243,13 @@ function MobileHomePage() {
               {contacts.length === 0 ? '名册还是空的，先添加联系人吧' : '目前没有需要特别关注的人'}
             </p>
           ) : (
-            <ul className="space-y-2 list-none p-0 m-0">
+            <ul className="space-y-3 list-none p-0 m-0">
               {attention.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="rounded-xl bg-slate-50/80 p-3">
                   <button
                     type="button"
                     onClick={() => navigate(`/contacts/${item.id}`)}
-                    className="w-full text-left flex items-center gap-3 py-2 border-0 bg-transparent cursor-pointer"
+                    className="w-full text-left flex items-center gap-3 border-0 bg-transparent cursor-pointer p-0"
                   >
                     <span
                       className="w-9 h-9 rounded-full text-white text-sm font-semibold flex items-center justify-center shrink-0"
@@ -152,11 +263,23 @@ function MobileHomePage() {
                         <span className={`px-1.5 py-0.5 rounded-full border text-[10px] shrink-0 ${heatmapStyle(item.status)}`}>
                           {heatmapLabel(item.status)}
                         </span>
+                        {item.has_upcoming && (
+                          <span className="px-1.5 py-0.5 rounded-full border text-[10px] shrink-0 bg-blue-50 text-blue-600 border-blue-100">
+                            已安排
+                          </span>
+                        )}
                       </span>
                       <span className="block text-xs text-slate-400 truncate mt-0.5">{item.reason}</span>
                     </span>
                     <Chevron />
                   </button>
+                  <ContactActionBar
+                    dense
+                    contactId={item.id}
+                    contactName={item.name}
+                    phone={item.phone}
+                    onDone={() => { refreshHeatmap(); refreshSuggestions(); }}
+                  />
                 </li>
               ))}
             </ul>
